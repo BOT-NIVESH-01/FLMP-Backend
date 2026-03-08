@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const bcrypt = require('bcryptjs'); // Added for secure user creation
 
 const User = require('../models/User');
 const Leave = require('../models/Leave');
@@ -74,7 +75,6 @@ router.get('/leaves', auth, async (req, res) => {
   }
 });
 
-// --- UPDATED: POST LEAVE WITH HOD AUTO APPROVE ---
 router.post('/leaves', auth, async (req, res) => {
   try {
     const { type, date, reason, substitutions, startTime, endTime } = req.body;
@@ -103,7 +103,7 @@ router.post('/leaves', auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     const role = user.role ? user.role.toUpperCase() : '';
     
-    // FEATURE: Auto Approve for HOD/Admin
+    // Auto Approve for HOD/Admin
     const initialStatus = (role === 'HOD' || role === 'ADMIN') ? 'Approved' : 'Pending';
 
     const newLeave = new Leave({
@@ -134,7 +134,6 @@ router.post('/leaves', auth, async (req, res) => {
   }
 });
 
-// --- UPDATED: STRICT TIMETABLE LOGIC ---
 router.patch('/leaves/:id/substitute', auth, async (req, res) => {
   const { slot, status } = req.body; 
 
@@ -148,7 +147,7 @@ router.patch('/leaves/:id/substitute', auth, async (req, res) => {
     leave.substitutions[subIndex].status = status;
     await leave.save();
 
-    // FEATURE: Update timetable ONLY if leave is already Approved (HOD exception scenario)
+    // Update timetable ONLY if leave is already Approved (HOD exception scenario)
     if (status === 'Accepted' && leave.status === 'Approved') {
         const subReq = leave.substitutions[subIndex];
         const targetDate = subReq.date || leave.date;
@@ -230,7 +229,7 @@ router.patch('/leaves/:id/status', auth, async (req, res) => {
 
     leave.status = status;
 
-    // FEATURE: If HOD rejects, cascade the rejection to pending substitutions
+    // If HOD rejects, cascade the rejection to pending substitutions
     if (status === 'Rejected') {
       leave.substitutions.forEach(sub => {
         if (sub.status === 'Pending') {
@@ -270,6 +269,151 @@ router.patch('/leaves/:id/status', auth, async (req, res) => {
 
     res.json(leave);
   } catch (err) {
+    res.status(500).send('Server Error');
+  }
+});
+
+// ============================================================================
+// NEW ADMIN ROUTES
+// ============================================================================
+
+// If this file is mounted at `/api/data` in server.js, these routes become:
+// /api/data/admin/users
+// /api/data/admin/timetable/bulk
+// /api/data/admin/users/:id
+// /api/data/admin/timetable/:id
+// /api/data/admin/timetable
+
+// @route   POST api/data/admin/users
+// @desc    Admin creates a new faculty account
+// @access  Private (Admin only)
+router.post('/admin/users', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    const role = currentUser.role ? currentUser.role.toUpperCase() : '';
+
+    if (!currentUser || role !== 'ADMIN') {
+      return res.status(403).json({ msg: 'Not authorized. Admin role required.' });
+    }
+
+    const { name, email, password, role: newUserRole, department } = req.body;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ msg: 'User with this email already exists' });
+    }
+
+    // Set default leave balances
+    const leaveBalance = { casual: 12, sick: 10 };
+
+    user = new User({
+      name,
+      email,
+      password,
+      role: newUserRole,
+      department,
+      leaveBalance
+    });
+
+    // Hash the password before saving
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    await user.save();
+
+    // Return the user document (without password)
+    const userResponse = await User.findById(user.id).select('-password');
+    res.json(userResponse);
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST api/data/admin/timetable/bulk
+// @desc    Admin assigns bulk timetable entries to a newly created faculty
+// @access  Private (Admin only)
+router.post('/admin/timetable/bulk', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    const role = currentUser.role ? currentUser.role.toUpperCase() : '';
+
+    if (!currentUser || role !== 'ADMIN') {
+      return res.status(403).json({ msg: 'Not authorized. Admin role required.' });
+    }
+
+    const { entries } = req.body;
+
+    if (!entries || entries.length === 0) {
+      return res.status(400).json({ msg: 'No timetable entries provided' });
+    }
+
+    // Insert all the entries into the Timetable collection at once
+    const insertedEntries = await Timetable.insertMany(entries);
+
+    res.json(insertedEntries);
+
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   DELETE api/data/admin/users/:id
+// @desc    Admin deletes a faculty account and their timetable
+// @access  Private (Admin only)
+router.delete('/admin/users/:id', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser || currentUser.role.toUpperCase() !== 'ADMIN') {
+      return res.status(403).json({ msg: 'Not authorized.' });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    await Timetable.deleteMany({ userId: req.params.id });
+
+    res.json({ msg: 'User and associated timetables deleted successfully' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   DELETE api/data/admin/timetable/:id
+// @desc    Admin deletes a specific timetable slot
+// @access  Private (Admin only)
+router.delete('/admin/timetable/:id', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser || currentUser.role.toUpperCase() !== 'ADMIN') {
+      return res.status(403).json({ msg: 'Not authorized.' });
+    }
+
+    await Timetable.findByIdAndDelete(req.params.id);
+    res.json({ msg: 'Timetable slot deleted' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   POST api/data/admin/timetable
+// @desc    Admin adds a single timetable slot to an existing user
+// @access  Private (Admin only)
+router.post('/admin/timetable', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser || currentUser.role.toUpperCase() !== 'ADMIN') {
+      return res.status(403).json({ msg: 'Not authorized.' });
+    }
+
+    const newSlot = new Timetable(req.body);
+    await newSlot.save();
+    res.json(newSlot);
+  } catch (err) {
+    console.error(err.message);
     res.status(500).send('Server Error');
   }
 });
