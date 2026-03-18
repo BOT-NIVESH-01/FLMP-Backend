@@ -14,16 +14,52 @@ const getDayName = (dateStr) => {
 
 const getWeekRange = (dateStr) => {
   const curr = new Date(dateStr);
-  const day = curr.getDay() || 7; 
-  if(day !== 1) curr.setHours(-24 * (day - 1)); 
+  const day = curr.getDay() || 7;
+  if (day !== 1) curr.setHours(-24 * (day - 1));
   const monday = new Date(curr);
   const sunday = new Date(curr);
   sunday.setDate(monday.getDate() + 6);
-  
+
   return {
     start: monday.toISOString().split('T')[0],
     end: sunday.toISOString().split('T')[0]
   };
+};
+
+const upsertSubstituteTimetableSlot = async ({ substituteUserId, substitution, leaveDate }) => {
+  if (!substituteUserId) return;
+
+  const targetDate = substitution.date || leaveDate;
+  const dayName = getDayName(targetDate);
+
+  await Timetable.findOneAndUpdate(
+    {
+      userId: substituteUserId,
+      slot: substitution.slot,
+      date: targetDate
+    },
+    {
+      userId: substituteUserId,
+      day: dayName,
+      slot: substitution.slot,
+      subject: `Sub: ${substitution.subject}`,
+      class: substitution.class,
+      date: targetDate
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
+    }
+  );
+};
+
+const safeUpsertSubstituteTimetableSlot = async (payload) => {
+  try {
+    await upsertSubstituteTimetableSlot(payload);
+  } catch (err) {
+    console.error('Timetable sync failed:', err.message);
+  }
 };
 
 router.get('/users', auth, async (req, res) => {
@@ -62,7 +98,7 @@ router.get('/leaves', auth, async (req, res) => {
     let leaves;
     const role = currentUser.role ? currentUser.role.toUpperCase() : '';
 
-    if (role === 'HOD' || role === 'ADMIN') {
+    if (role === 'HOD' || role === 'ADMIN' || role === 'DEO') {
       leaves = await Leave.find().sort({ date: -1 });
     } else {
       leaves = await Leave.find({
@@ -78,9 +114,9 @@ router.get('/leaves', auth, async (req, res) => {
 router.post('/leaves', auth, async (req, res) => {
   try {
     const { type, date, reason, substitutions, startTime, endTime } = req.body;
-    
-    const existingLeave = await Leave.findOne({ 
-      userId: req.user.id, 
+
+    const existingLeave = await Leave.findOne({
+      userId: req.user.id,
       date: date,
       status: { $in: ['Pending', 'Approved'] }
     });
@@ -102,7 +138,7 @@ router.post('/leaves', auth, async (req, res) => {
 
     const user = await User.findById(req.user.id);
     const role = user.role ? user.role.toUpperCase() : '';
-    
+
     // Auto Approve for HOD/Admin
     const initialStatus = (role === 'HOD' || role === 'ADMIN') ? 'Approved' : 'Pending';
 
@@ -115,16 +151,16 @@ router.post('/leaves', auth, async (req, res) => {
       endTime,
       reason,
       status: initialStatus,
-      substitutions 
+      substitutions
     });
 
     const leave = await newLeave.save();
 
     // If HOD Auto-Approved, immediately deduct leave balance
     if (initialStatus === 'Approved' && type !== 'Partial') {
-      const typeKey = type.toLowerCase(); 
+      const typeKey = type.toLowerCase();
       if (['casual', 'sick', 'personal'].includes(typeKey)) {
-         await User.findByIdAndUpdate(req.user.id, { $inc: { [`leaveBalance.${typeKey}`]: -1 } });
+        await User.findByIdAndUpdate(req.user.id, { $inc: { [`leaveBalance.${typeKey}`]: -1 } });
       }
     }
 
@@ -135,7 +171,7 @@ router.post('/leaves', auth, async (req, res) => {
 });
 
 router.patch('/leaves/:id/substitute', auth, async (req, res) => {
-  const { slot, status } = req.body; 
+  const { slot, status } = req.body;
 
   try {
     const leave = await Leave.findById(req.params.id);
@@ -147,20 +183,13 @@ router.patch('/leaves/:id/substitute', auth, async (req, res) => {
     leave.substitutions[subIndex].status = status;
     await leave.save();
 
-    // Update timetable ONLY if leave is already Approved (HOD exception scenario)
-    if (status === 'Accepted' && leave.status === 'Approved') {
-        const subReq = leave.substitutions[subIndex];
-        const targetDate = subReq.date || leave.date;
-        const dayName = getDayName(targetDate);
-
-        await Timetable.create({
-            userId: req.user.id,
-            day: dayName,
-            slot: subReq.slot,
-            subject: `Sub: ${subReq.subject}`,
-            class: subReq.class,
-            date: targetDate 
-        });
+    if (status === 'Accepted') {
+      const subReq = leave.substitutions[subIndex];
+      await safeUpsertSubstituteTimetableSlot({
+        substituteUserId: req.user.id,
+        substitution: subReq,
+        leaveDate: leave.date
+      });
     }
 
     res.json(leave);
@@ -176,7 +205,7 @@ router.patch('/leaves/:id/force-substitute', auth, async (req, res) => {
     const currentUser = await User.findById(req.user.id);
     const role = currentUser.role ? currentUser.role.toUpperCase() : '';
 
-    if (!currentUser || (role !== 'HOD' && role !== 'ADMIN')) {
+    if (!currentUser || (role !== 'HOD' && role !== 'ADMIN' && role !== 'DEO')) {
       return res.status(403).json({ msg: 'Not authorized.' });
     }
 
@@ -190,22 +219,13 @@ router.patch('/leaves/:id/force-substitute', auth, async (req, res) => {
     leave.substitutions[subIndex].subName = subName;
     leave.substitutions[subIndex].status = 'Accepted';
     await leave.save();
-    
-    // Admin force assign implies approval if it's already an approved leave
-    if (leave.status === 'Approved') {
-        const subReq = leave.substitutions[subIndex];
-        const targetDate = subReq.date || leave.date;
-        const dayName = getDayName(targetDate);
 
-        await Timetable.create({
-            userId: subId,
-            day: dayName,
-            slot: subReq.slot,
-            subject: `Sub: ${subReq.subject}`,
-            class: subReq.class,
-            date: targetDate 
-        });
-    }
+    const subReq = leave.substitutions[subIndex];
+    await safeUpsertSubstituteTimetableSlot({
+      substituteUserId: subId,
+      substitution: subReq,
+      leaveDate: leave.date
+    });
 
     res.json(leave);
   } catch (err) {
@@ -214,7 +234,7 @@ router.patch('/leaves/:id/force-substitute', auth, async (req, res) => {
 });
 
 router.patch('/leaves/:id/status', auth, async (req, res) => {
-  const { status } = req.body; 
+  const { status } = req.body;
 
   try {
     const currentUser = await User.findById(req.user.id);
@@ -240,30 +260,24 @@ router.patch('/leaves/:id/status', auth, async (req, res) => {
 
     await leave.save();
 
-    // When explicitly approved, push all currently accepted subs into timetable
+    // When explicitly approved, ensure all currently accepted subs exist in timetable
     if (status === 'Approved') {
       const acceptedSubs = leave.substitutions.filter(sub => sub.status === 'Accepted');
       if (acceptedSubs.length > 0) {
-        const timetableEntries = acceptedSubs.map(sub => {
-           const targetDate = sub.date || leave.date;
-           const dayName = getDayName(targetDate);
-           return {
-             userId: sub.subId, 
-             day: dayName,
-             slot: sub.slot,
-             subject: `Sub: ${sub.subject}`,
-             class: sub.class,
-             date: targetDate 
-           };
-        });
-        await Timetable.insertMany(timetableEntries);
+        await Promise.allSettled(
+          acceptedSubs.map(sub => safeUpsertSubstituteTimetableSlot({
+            substituteUserId: sub.subId,
+            substitution: sub,
+            leaveDate: leave.date
+          }))
+        );
       }
 
-      if (leave.type !== 'Partial') { 
-          const typeKey = leave.type.toLowerCase(); 
-          if (['casual', 'sick', 'personal'].includes(typeKey)) {
-             await User.findByIdAndUpdate(leave.userId, { $inc: { [`leaveBalance.${typeKey}`]: -1 } });
-          }
+      if (leave.type !== 'Partial') {
+        const typeKey = leave.type.toLowerCase();
+        if (['casual', 'sick', 'personal'].includes(typeKey)) {
+          await User.findByIdAndUpdate(leave.userId, { $inc: { [`leaveBalance.${typeKey}`]: -1 } });
+        }
       }
     }
 
@@ -415,6 +429,55 @@ router.post('/admin/timetable', auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
+  }
+});
+
+// @route   PATCH api/data/admin/users/:id/credentials
+// @desc    Admin/DEO updates faculty email and/or password
+// @access  Private (Admin, DEO)
+router.patch('/admin/users/:id/credentials', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    const role = currentUser?.role ? currentUser.role.toUpperCase() : '';
+
+    if (!currentUser || (role !== 'ADMIN' && role !== 'DEO')) {
+      return res.status(403).json({ msg: 'Not authorized.' });
+    }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ msg: 'Faculty not found.' });
+    }
+
+    if (targetUser.role?.toUpperCase() !== 'FACULTY') {
+      return res.status(400).json({ msg: 'Only faculty accounts can be updated from this panel.' });
+    }
+
+    const { email, password } = req.body;
+    const updates = {};
+
+    if (email && email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const existing = await User.findOne({ email: normalizedEmail, _id: { $ne: targetUser._id } });
+      if (existing) {
+        return res.status(400).json({ msg: 'Email already in use by another account.' });
+      }
+      updates.email = normalizedEmail;
+    }
+
+    if (password && password.trim()) {
+      updates.password = password.trim();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ msg: 'Provide at least one field to update.' });
+    }
+
+    const updated = await User.findByIdAndUpdate(targetUser._id, updates, { new: true }).select('-password');
+    return res.json(updated);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send('Server Error');
   }
 });
 

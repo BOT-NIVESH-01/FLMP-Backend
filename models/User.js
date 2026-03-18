@@ -4,7 +4,7 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true }, // Store hashed passwords
-    role: { type: String, enum: ['Faculty', 'HOD', 'Admin'], default: 'Faculty' },
+    role: { type: String, enum: ['Faculty', 'HOD', 'DEO', 'Admin'], default: 'Faculty' },
     department: String,
     leaveBalance: {
         casual: { type: Number, default: 12 },

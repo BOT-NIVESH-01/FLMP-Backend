@@ -9,7 +9,7 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['Faculty', 'HOD', 'Admin'], default: 'Faculty' },
+  role: { type: String, enum: ['Faculty', 'HOD', 'DEO', 'Admin'], default: 'Faculty' },
   department: String,
   leaveBalance: {
     casual: { type: Number, default: 12 },
@@ -26,8 +26,30 @@ const TimetableSchema = new mongoose.Schema({
   class: String
 });
 
+const LeaveSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userName: String,
+  type: String,
+  date: String,
+  endDate: String,
+  startTime: String,
+  endTime: String,
+  reason: String,
+  status: String,
+  substitutions: [{
+    date: String,
+    slot: Number,
+    subject: String,
+    class: String,
+    subId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    subName: String,
+    status: String
+  }]
+});
+
 const User = mongoose.model('User', UserSchema);
 const Timetable = mongoose.model('Timetable', TimetableSchema);
+const Leave = mongoose.model('Leave', LeaveSchema);
 
 // Data to Seed
 const seedDatabase = async () => {
@@ -38,6 +60,7 @@ const seedDatabase = async () => {
     // 1. Clear existing data
     await User.deleteMany({});
     await Timetable.deleteMany({});
+    await Leave.deleteMany({});
     console.log('Old data cleared.');
 
     // 2. Create Users
@@ -48,7 +71,7 @@ const seedDatabase = async () => {
         password: '123',
         role: 'HOD',
         department: 'Computer Science',
-        leaveBalance: { casual: 15, sick: 10, personal: 5 }
+        leaveBalance: { casual: 12, sick: 10, personal: 5 }
       },
       {
         name: 'Prof. OT Gopi Krishna',
@@ -129,7 +152,15 @@ const seedDatabase = async () => {
         password: 'admin', // Make sure to change this in production!
         role: 'Admin',
         department: 'Administration',
-        leaveBalance: { casual: 100, sick: 100, personal: 100 }
+        leaveBalance: { casual: 12, sick: 10, personal: 5 }
+      },
+      {
+        name: 'Department DEO',
+        email: 'deo@vvit.edu',
+        password: '123',
+        role: 'DEO',
+        department: 'Computer Science',
+        leaveBalance: { casual: 12, sick: 10, personal: 5 }
       }
     ]);
 
@@ -147,7 +178,7 @@ const seedDatabase = async () => {
     // Slot 6: 01:40-02:30
     // Slot 7: 02:30-03:20
     // Slot 8: 03:20-04:10
-    
+
     const timetableData = [
       // --- Prof. OT Gopi Krishna (Web Technologies) ---
       { userId: gopi._id, day: 'Monday', slot: 1, subject: 'Web Dev', class: 'CS-A' },
