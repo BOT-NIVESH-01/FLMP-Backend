@@ -6,6 +6,13 @@ const bcrypt = require('bcryptjs'); // Added for secure user creation
 const User = require('../models/User');
 const Leave = require('../models/Leave');
 const Timetable = require('../models/Timetable');
+const {
+  runSafe,
+  notifyLeaveApplied,
+  notifyLeaveStatusUpdated,
+  notifySubstitutionUpdated,
+  notifyForcedSubstitution
+} = require('../services/notificationService');
 
 const getDayName = (dateStr) => {
   const date = new Date(dateStr);
@@ -164,6 +171,8 @@ router.post('/leaves', auth, async (req, res) => {
       }
     }
 
+    runSafe(notifyLeaveApplied(leave), 'Leave applied notification failed');
+
     res.json(leave);
   } catch (err) {
     res.status(500).send('Server Error');
@@ -191,6 +200,16 @@ router.patch('/leaves/:id/substitute', auth, async (req, res) => {
         leaveDate: leave.date
       });
     }
+
+    runSafe(
+      notifySubstitutionUpdated({
+        leaveDoc: leave,
+        slot: parseInt(slot),
+        status,
+        substituteUserId: req.user.id
+      }),
+      'Substitution update notification failed'
+    );
 
     res.json(leave);
   } catch (err) {
@@ -226,6 +245,16 @@ router.patch('/leaves/:id/force-substitute', auth, async (req, res) => {
       substitution: subReq,
       leaveDate: leave.date
     });
+
+    runSafe(
+      notifyForcedSubstitution({
+        leaveDoc: leave,
+        slot: parseInt(slot),
+        substituteUserId: subId,
+        forcedByUserId: req.user.id
+      }),
+      'Forced substitution notification failed'
+    );
 
     res.json(leave);
   } catch (err) {
@@ -280,6 +309,11 @@ router.patch('/leaves/:id/status', auth, async (req, res) => {
         }
       }
     }
+
+    runSafe(
+      notifyLeaveStatusUpdated(leave, req.user.id),
+      'Leave status notification failed'
+    );
 
     res.json(leave);
   } catch (err) {
