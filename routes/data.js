@@ -1,23 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const bcrypt = require('bcryptjs'); // Added for secure user creation
+const bcrypt = require('bcryptjs');
 
 const User = require('../models/User');
 const Leave = require('../models/Leave');
 const Timetable = require('../models/Timetable');
-const {
-  runSafe,
-  notifyLeaveApplied,
-  notifyLeaveStatusUpdated,
-  notifySubstitutionUpdated,
-  notifyForcedSubstitution
-} = require('../services/notificationService');
 
 const getDayName = (dateStr) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { weekday: 'long' });
 };
+
+const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
 
 const getWeekRange = (dateStr) => {
   const curr = new Date(dateStr);
@@ -171,8 +166,6 @@ router.post('/leaves', auth, async (req, res) => {
       }
     }
 
-    runSafe(notifyLeaveApplied(leave), 'Leave applied notification failed');
-
     res.json(leave);
   } catch (err) {
     res.status(500).send('Server Error');
@@ -200,16 +193,6 @@ router.patch('/leaves/:id/substitute', auth, async (req, res) => {
         leaveDate: leave.date
       });
     }
-
-    runSafe(
-      notifySubstitutionUpdated({
-        leaveDoc: leave,
-        slot: parseInt(slot),
-        status,
-        substituteUserId: req.user.id
-      }),
-      'Substitution update notification failed'
-    );
 
     res.json(leave);
   } catch (err) {
@@ -245,16 +228,6 @@ router.patch('/leaves/:id/force-substitute', auth, async (req, res) => {
       substitution: subReq,
       leaveDate: leave.date
     });
-
-    runSafe(
-      notifyForcedSubstitution({
-        leaveDoc: leave,
-        slot: parseInt(slot),
-        substituteUserId: subId,
-        forcedByUserId: req.user.id
-      }),
-      'Forced substitution notification failed'
-    );
 
     res.json(leave);
   } catch (err) {
@@ -310,31 +283,13 @@ router.patch('/leaves/:id/status', auth, async (req, res) => {
       }
     }
 
-    runSafe(
-      notifyLeaveStatusUpdated(leave, req.user.id),
-      'Leave status notification failed'
-    );
-
     res.json(leave);
   } catch (err) {
     res.status(500).send('Server Error');
   }
 });
 
-// ============================================================================
-// NEW ADMIN ROUTES
-// ============================================================================
 
-// If this file is mounted at `/api/data` in server.js, these routes become:
-// /api/data/admin/users
-// /api/data/admin/timetable/bulk
-// /api/data/admin/users/:id
-// /api/data/admin/timetable/:id
-// /api/data/admin/timetable
-
-// @route   POST api/data/admin/users
-// @desc    Admin creates a new faculty account
-// @access  Private (Admin only)
 router.post('/admin/users', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -380,9 +335,53 @@ router.post('/admin/users', auth, async (req, res) => {
   }
 });
 
-// @route   POST api/data/admin/timetable/bulk
-// @desc    Admin assigns bulk timetable entries to a newly created faculty
-// @access  Private (Admin only)
+
+router.post('/admin/users/deo-create', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user.id);
+    const role = currentUser?.role ? currentUser.role.toUpperCase() : '';
+
+    if (!currentUser || role !== 'DEO') {
+      return res.status(403).json({ msg: 'Not authorized. DEO role required.' });
+    }
+
+    const { name, email, password, role: newUserRole, department } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const safeRole = String(newUserRole || '').trim();
+
+    if (!name || !normalizedEmail || !password || !department || !safeRole) {
+      return res.status(400).json({ msg: 'Name, email, password, role and department are required.' });
+    }
+
+    if (!['Faculty', 'HOD'].includes(safeRole)) {
+      return res.status(400).json({ msg: 'DEO can only create Faculty or HOD accounts.' });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ msg: 'User with this email already exists.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      role: safeRole,
+      department: String(department).trim(),
+      leaveBalance: { casual: 12, sick: 10, personal: 5 }
+    });
+
+    const safeUser = await User.findById(newUser._id).select('-password');
+    return res.json(safeUser);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send('Server Error');
+  }
+});
+
 router.post('/admin/timetable/bulk', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -409,9 +408,7 @@ router.post('/admin/timetable/bulk', auth, async (req, res) => {
   }
 });
 
-// @route   DELETE api/data/admin/users/:id
-// @desc    Admin deletes a faculty account and their timetable
-// @access  Private (Admin only)
+
 router.delete('/admin/users/:id', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -429,9 +426,7 @@ router.delete('/admin/users/:id', auth, async (req, res) => {
   }
 });
 
-// @route   DELETE api/data/admin/timetable/:id
-// @desc    Admin deletes a specific timetable slot
-// @access  Private (Admin only)
+
 router.delete('/admin/timetable/:id', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -447,9 +442,7 @@ router.delete('/admin/timetable/:id', auth, async (req, res) => {
   }
 });
 
-// @route   POST api/data/admin/timetable
-// @desc    Admin adds a single timetable slot to an existing user
-// @access  Private (Admin only)
+
 router.post('/admin/timetable', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -466,9 +459,7 @@ router.post('/admin/timetable', auth, async (req, res) => {
   }
 });
 
-// @route   PATCH api/data/admin/users/:id/credentials
-// @desc    Admin/DEO updates faculty email and/or password
-// @access  Private (Admin, DEO)
+
 router.patch('/admin/users/:id/credentials', auth, async (req, res) => {
   try {
     const currentUser = await User.findById(req.user.id);
@@ -500,7 +491,8 @@ router.patch('/admin/users/:id/credentials', auth, async (req, res) => {
     }
 
     if (password && password.trim()) {
-      updates.password = password.trim();
+      const salt = await bcrypt.genSalt(10);
+      updates.password = await bcrypt.hash(password.trim(), salt);
     }
 
     if (Object.keys(updates).length === 0) {

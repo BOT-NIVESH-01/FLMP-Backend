@@ -179,66 +179,120 @@ const seedDatabase = async () => {
     // Slot 7: 02:30-03:20
     // Slot 8: 03:20-04:10
 
-    const timetableData = [
-      // --- Prof. OT Gopi Krishna (Web Technologies) ---
-      { userId: gopi._id, day: 'Monday', slot: 1, subject: 'Web Dev', class: 'CS-A' },
-      { userId: gopi._id, day: 'Monday', slot: 6, subject: 'Web Dev Lab', class: 'CS-A' },
-      { userId: gopi._id, day: 'Tuesday', slot: 2, subject: 'Project Phase I', class: 'CS-C' },
-      { userId: gopi._id, day: 'Wednesday', slot: 4, subject: 'Mentoring', class: 'CS-B' },
-      { userId: gopi._id, day: 'Thursday', slot: 7, subject: 'Web Dev', class: 'CS-A' },
-      { userId: gopi._id, day: 'Friday', slot: 1, subject: 'Web Dev Lab', class: 'CS-A' },
+   const timetableData = [
+  // ===== ORIGINAL TIMETABLE =====
 
-      // --- Prof. P Satish Kumar (Database Systems) ---
-      { userId: satish._id, day: 'Monday', slot: 2, subject: 'Database Systems', class: 'CS-B' },
-      { userId: satish._id, day: 'Monday', slot: 4, subject: 'DBMS Lab', class: 'CS-B' },
-      { userId: satish._id, day: 'Tuesday', slot: 1, subject: 'Database Systems', class: 'CS-A' },
-      { userId: satish._id, day: 'Wednesday', slot: 3, subject: 'DBMS Lab', class: 'CS-A' },
-      { userId: satish._id, day: 'Thursday', slot: 5, subject: 'Database Systems', class: 'CS-B' },
-      { userId: satish._id, day: 'Friday', slot: 8, subject: 'Mentoring', class: 'CS-C' },
+  // --- Prof. OT Gopi Krishna (Web Technologies) ---
+  { userId: gopi._id, day: 'Monday', slot: 1, subject: 'Web Dev', class: 'CS-A' },
+  { userId: gopi._id, day: 'Monday', slot: 6, subject: 'Web Dev Lab', class: 'CS-A' },
+  { userId: gopi._id, day: 'Tuesday', slot: 2, subject: 'Project Phase I', class: 'CS-C' },
+  { userId: gopi._id, day: 'Wednesday', slot: 4, subject: 'Mentoring', class: 'CS-B' },
+  { userId: gopi._id, day: 'Thursday', slot: 7, subject: 'Web Dev', class: 'CS-A' },
+  { userId: gopi._id, day: 'Friday', slot: 1, subject: 'Web Dev Lab', class: 'CS-A' },
 
-      // --- Prof. Sk Sameerunnisa (Network Security) ---
-      { userId: sameera._id, day: 'Monday', slot: 5, subject: 'Network Security', class: 'CS-C' },
-      { userId: sameera._id, day: 'Tuesday', slot: 3, subject: 'Ethical Hacking', class: 'CS-Final' },
-      { userId: sameera._id, day: 'Wednesday', slot: 1, subject: 'Network Security', class: 'CS-C' },
-      { userId: sameera._id, day: 'Thursday', slot: 2, subject: 'Networks Lab', class: 'CS-C' },
-      { userId: sameera._id, day: 'Friday', slot: 4, subject: 'Ethical Hacking', class: 'CS-Final' },
+  // --- Prof. P Satish Kumar (Database Systems) ---
+  { userId: satish._id, day: 'Monday', slot: 2, subject: 'Database Systems', class: 'CS-B' },
+  { userId: satish._id, day: 'Monday', slot: 4, subject: 'DBMS Lab', class: 'CS-B' },
+  { userId: satish._id, day: 'Tuesday', slot: 1, subject: 'Database Systems', class: 'CS-A' },
+  { userId: satish._id, day: 'Wednesday', slot: 3, subject: 'DBMS Lab', class: 'CS-A' },
+  { userId: satish._id, day: 'Thursday', slot: 5, subject: 'Database Systems', class: 'CS-B' },
+  { userId: satish._id, day: 'Friday', slot: 8, subject: 'Mentoring', class: 'CS-C' },
 
-      // --- Prof. K.Ravi Kumar (AI & Data Mining) ---
-      { userId: ravi._id, day: 'Tuesday', slot: 5, subject: 'AI', class: 'CS-B' },
-      { userId: ravi._id, day: 'Wednesday', slot: 2, subject: 'AI Lab', class: 'CS-B' },
-      { userId: ravi._id, day: 'Thursday', slot: 1, subject: 'Data Mining', class: 'CS-A' },
-      { userId: ravi._id, day: 'Friday', slot: 6, subject: 'Data Mining', class: 'CS-A' },
+  // --- Prof. Sk Sameerunnisa (Network Security) ---
+  { userId: sameera._id, day: 'Monday', slot: 5, subject: 'Network Security', class: 'CS-C' },
+  { userId: sameera._id, day: 'Tuesday', slot: 3, subject: 'Ethical Hacking', class: 'CS-Final' },
+  { userId: sameera._id, day: 'Wednesday', slot: 1, subject: 'Network Security', class: 'CS-C' },
+  { userId: sameera._id, day: 'Thursday', slot: 2, subject: 'Networks Lab', class: 'CS-C' },
+  { userId: sameera._id, day: 'Friday', slot: 4, subject: 'Ethical Hacking', class: 'CS-Final' },
 
-      // --- Dr. O Aruna (Big Data Analytics) ---
-      { userId: aruna._id, day: 'Monday', slot: 6, subject: 'Big Data', class: 'CS-C' },
-      { userId: aruna._id, day: 'Thursday', slot: 4, subject: 'Big Data', class: 'CS-C' },
-      { userId: aruna._id, day: 'Friday', slot: 3, subject: 'Big Data Lab', class: 'CS-C' },
+  // --- Prof. K.Ravi Kumar (AI & Data Mining) ---
+  { userId: ravi._id, day: 'Tuesday', slot: 5, subject: 'AI', class: 'CS-B' },
+  { userId: ravi._id, day: 'Wednesday', slot: 2, subject: 'AI Lab', class: 'CS-B' },
+  { userId: ravi._id, day: 'Thursday', slot: 1, subject: 'Data Mining', class: 'CS-A' },
+  { userId: ravi._id, day: 'Friday', slot: 6, subject: 'Data Mining', class: 'CS-A' },
 
-      // --- Prof. V Ramya (Cloud Computing) ---
-      { userId: ramya._id, day: 'Tuesday', slot: 6, subject: 'Cloud Computing', class: 'CS-A' },
-      { userId: ramya._id, day: 'Wednesday', slot: 7, subject: 'Cloud Lab', class: 'CS-A' },
-      { userId: ramya._id, day: 'Thursday', slot: 3, subject: 'Cloud Computing', class: 'CS-A' },
+  // --- Dr. O Aruna (Big Data Analytics) ---
+  { userId: aruna._id, day: 'Monday', slot: 6, subject: 'Big Data', class: 'CS-C' },
+  { userId: aruna._id, day: 'Thursday', slot: 4, subject: 'Big Data', class: 'CS-C' },
+  { userId: aruna._id, day: 'Friday', slot: 3, subject: 'Big Data Lab', class: 'CS-C' },
 
-      // --- Dr. I L J Bhakta Singh (Software Engineering) ---
-      { userId: bhakta._id, day: 'Monday', slot: 7, subject: 'Software Eng', class: 'CS-B' },
-      { userId: bhakta._id, day: 'Wednesday', slot: 5, subject: 'Software Eng', class: 'CS-A' },
-      { userId: bhakta._id, day: 'Friday', slot: 7, subject: 'Project Review', class: 'CS-B' },
+  // --- Prof. V Ramya (Cloud Computing) ---
+  { userId: ramya._id, day: 'Tuesday', slot: 6, subject: 'Cloud Computing', class: 'CS-A' },
+  { userId: ramya._id, day: 'Wednesday', slot: 7, subject: 'Cloud Lab', class: 'CS-A' },
+  { userId: ramya._id, day: 'Thursday', slot: 3, subject: 'Cloud Computing', class: 'CS-A' },
 
-      // --- Prof. T Suresh (Compiler Design) ---
-      { userId: suresh._id, day: 'Tuesday', slot: 4, subject: 'Compiler Design', class: 'CS-C' },
-      { userId: suresh._id, day: 'Thursday', slot: 8, subject: 'Compiler Design', class: 'CS-B' },
-      { userId: suresh._id, day: 'Friday', slot: 5, subject: 'Compiler Lab', class: 'CS-B' },
+  // --- Dr. I L J Bhakta Singh (Software Engineering) ---
+  { userId: bhakta._id, day: 'Monday', slot: 7, subject: 'Software Eng', class: 'CS-B' },
+  { userId: bhakta._id, day: 'Wednesday', slot: 5, subject: 'Software Eng', class: 'CS-A' },
+  { userId: bhakta._id, day: 'Friday', slot: 7, subject: 'Project Review', class: 'CS-B' },
 
-      // --- Prof. Dhurvasi (Mobile Computing) ---
-      { userId: dhurvasi._id, day: 'Monday', slot: 8, subject: 'Mobile Computing', class: 'CS-B' },
-      { userId: dhurvasi._id, day: 'Wednesday', slot: 6, subject: 'Mobile Computing', class: 'CS-A' },
-      { userId: dhurvasi._id, day: 'Thursday', slot: 6, subject: 'Mobile Computing', class: 'CS-C' },
+  // --- Prof. T Suresh (Compiler Design) ---
+  { userId: suresh._id, day: 'Tuesday', slot: 4, subject: 'Compiler Design', class: 'CS-C' },
+  { userId: suresh._id, day: 'Thursday', slot: 8, subject: 'Compiler Design', class: 'CS-B' },
+  { userId: suresh._id, day: 'Friday', slot: 5, subject: 'Compiler Lab', class: 'CS-B' },
 
-      // --- Dr. MRN Tagore (HOD - Advanced Algorithms) ---
-      { userId: tagore._id, day: 'Monday', slot: 3, subject: 'Adv Algorithms', class: 'M.Tech' },
-      { userId: tagore._id, day: 'Wednesday', slot: 8, subject: 'Research Method', class: 'PhD' },
-      { userId: tagore._id, day: 'Friday', slot: 2, subject: 'Dept Meeting', class: 'Staff' },
-    ];
+  // --- Prof. Dhurvasi (Mobile Computing) ---
+  { userId: dhurvasi._id, day: 'Monday', slot: 8, subject: 'Mobile Computing', class: 'CS-B' },
+  { userId: dhurvasi._id, day: 'Wednesday', slot: 6, subject: 'Mobile Computing', class: 'CS-A' },
+  { userId: dhurvasi._id, day: 'Thursday', slot: 6, subject: 'Mobile Computing', class: 'CS-C' },
+
+  // --- Dr. MRN Tagore (HOD - Advanced Algorithms) ---
+  { userId: tagore._id, day: 'Monday', slot: 3, subject: 'Adv Algorithms', class: 'M.Tech' },
+  { userId: tagore._id, day: 'Wednesday', slot: 8, subject: 'Research Method', class: 'PhD' },
+  { userId: tagore._id, day: 'Friday', slot: 2, subject: 'Dept Meeting', class: 'Staff' },
+
+  // ===== ADDITIONAL TIMETABLE =====
+
+  { userId: gopi._id, day: 'Tuesday', slot: 7, subject: 'Web Dev', class: 'CS-B' },
+  { userId: gopi._id, day: 'Wednesday', slot: 6, subject: 'Web Dev', class: 'CS-C' },
+  { userId: gopi._id, day: 'Saturday', slot: 2, subject: 'Web Dev Lab', class: 'CS-A' },
+  { userId: gopi._id, day: 'Saturday', slot: 3, subject: 'Web Dev Lab', class: 'CS-A' },
+
+  { userId: satish._id, day: 'Tuesday', slot: 6, subject: 'Database Systems', class: 'CS-B' },
+  { userId: satish._id, day: 'Thursday', slot: 7, subject: 'DBMS Lab', class: 'CS-C' },
+  { userId: satish._id, day: 'Saturday', slot: 4, subject: 'Database Systems', class: 'CS-C' },
+  { userId: satish._id, day: 'Saturday', slot: 5, subject: 'Mentoring', class: 'CS-B' },
+
+  { userId: sameera._id, day: 'Monday', slot: 7, subject: 'Cyber Security', class: 'CS-B' },
+  { userId: sameera._id, day: 'Wednesday', slot: 5, subject: 'Network Security', class: 'CS-A' },
+  { userId: sameera._id, day: 'Saturday', slot: 1, subject: 'Ethical Hacking', class: 'CS-Final' },
+  { userId: sameera._id, day: 'Saturday', slot: 2, subject: 'Ethical Hacking Lab', class: 'CS-Final' },
+
+  { userId: ravi._id, day: 'Monday', slot: 8, subject: 'AI', class: 'CS-A' },
+  { userId: ravi._id, day: 'Tuesday', slot: 7, subject: 'Data Mining', class: 'CS-C' },
+  { userId: ravi._id, day: 'Saturday', slot: 6, subject: 'AI Workshop', class: 'CS-B' },
+  { userId: ravi._id, day: 'Saturday', slot: 7, subject: 'AI Lab', class: 'CS-B' },
+
+  { userId: aruna._id, day: 'Tuesday', slot: 3, subject: 'Big Data', class: 'CS-B' },
+  { userId: aruna._id, day: 'Wednesday', slot: 7, subject: 'Big Data Analytics', class: 'CS-A' },
+  { userId: aruna._id, day: 'Saturday', slot: 4, subject: 'Big Data Lab', class: 'CS-C' },
+  { userId: aruna._id, day: 'Saturday', slot: 5, subject: 'Big Data Lab', class: 'CS-C' },
+
+  { userId: ramya._id, day: 'Monday', slot: 4, subject: 'Cloud Computing', class: 'CS-C' },
+  { userId: ramya._id, day: 'Friday', slot: 2, subject: 'Cloud Computing', class: 'CS-B' },
+  { userId: ramya._id, day: 'Saturday', slot: 3, subject: 'Cloud Workshop', class: 'CS-A' },
+  { userId: ramya._id, day: 'Saturday', slot: 4, subject: 'Cloud Workshop', class: 'CS-A' },
+
+  { userId: bhakta._id, day: 'Tuesday', slot: 2, subject: 'Software Engineering', class: 'CS-C' },
+  { userId: bhakta._id, day: 'Thursday', slot: 4, subject: 'Software Engineering', class: 'CS-B' },
+  { userId: bhakta._id, day: 'Saturday', slot: 6, subject: 'Project Review', class: 'CS-A' },
+  { userId: bhakta._id, day: 'Saturday', slot: 7, subject: 'Mentoring', class: 'CS-C' },
+
+  { userId: suresh._id, day: 'Monday', slot: 1, subject: 'Compiler Design', class: 'CS-C' },
+  { userId: suresh._id, day: 'Wednesday', slot: 4, subject: 'Compiler Design', class: 'CS-B' },
+  { userId: suresh._id, day: 'Saturday', slot: 1, subject: 'Compiler Lab', class: 'CS-A' },
+  { userId: suresh._id, day: 'Saturday', slot: 2, subject: 'Compiler Lab', class: 'CS-A' },
+
+  { userId: dhurvasi._id, day: 'Tuesday', slot: 5, subject: 'Mobile Computing', class: 'CS-B' },
+  { userId: dhurvasi._id, day: 'Friday', slot: 3, subject: 'Mobile App Dev', class: 'CS-A' },
+  { userId: dhurvasi._id, day: 'Saturday', slot: 5, subject: 'Mobile Computing Lab', class: 'CS-C' },
+  { userId: dhurvasi._id, day: 'Saturday', slot: 6, subject: 'Mobile Computing Lab', class: 'CS-C' },
+
+  { userId: tagore._id, day: 'Tuesday', slot: 8, subject: 'Advanced Algorithms', class: 'M.Tech' },
+  { userId: tagore._id, day: 'Thursday', slot: 6, subject: 'Research Methodology', class: 'PhD' },
+  { userId: tagore._id, day: 'Saturday', slot: 7, subject: 'Department Review', class: 'Staff' },
+  { userId: tagore._id, day: 'Saturday', slot: 8, subject: 'Research Meeting', class: 'PhD' }
+];
 
     await Timetable.insertMany(timetableData);
     console.log('Timetables created.');

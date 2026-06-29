@@ -5,23 +5,31 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
+const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
+
+const isBcryptHash = (value = '') => /^\$2[aby]\$\d{2}\$/.test(value);
+
 // @route   POST api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
     try {
         // 1. Check if user exists
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: normalizedEmail });
         if (!user) {
             return res.status(400).json({ msg: 'Invalid Credentials' });
         }
 
-        // 2. Check Password (In a real app, use bcrypt.compare)
-        // For this MERN setup, assuming you stored plain text for '123' 
-        // or properly hashed. Ideally: const isMatch = await bcrypt.compare(password, user.password);
-        const isMatch = password === user.password; // Simple comparison for demo consistency
+        // Support both bcrypt-hashed passwords and legacy plain text records.
+        let isMatch = false;
+        if (isBcryptHash(user.password)) {
+            isMatch = await bcrypt.compare(password, user.password);
+        } else {
+            isMatch = password === user.password;
+        }
 
         if (!isMatch) {
             return res.status(400).json({ msg: 'Invalid Credentials' });
